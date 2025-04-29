@@ -1,2 +1,1 @@
-# spring-boot-docker
-Build a CI/CD Pipeline with Docker: From Code to Deployment
+Just a sample hello world application using Java/Spring Boot
