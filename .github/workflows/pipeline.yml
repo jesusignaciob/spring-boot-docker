@@ -36,5 +36,4 @@ jobs:
     #Push Docker image to ECR
     - name: Push Docker image to ECR
       run: |
-        docker tag ${{ secrets.AWS_ECR_REPO }}:latest ${{ secrets.AWS_ECR_REPO }}:latest
-        docker push ${{ secrets.AWS_ECR_REPO }}:latest
+        docker push ${{ secrets.AWS_ECR_REPO }}:lastest
