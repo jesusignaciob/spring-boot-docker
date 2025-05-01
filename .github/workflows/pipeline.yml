@@ -37,3 +37,48 @@ jobs:
     - name: Push Docker image to ECR
       run: |
         docker push ${{ secrets.AWS_ECR_REPO }}:lastest
+
+  copy-docker-compose:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_EC2 }}
+
+    - name: Copy and Rename docker-compose
+      run: |
+        sed -i "s|<IMAGE_URI>|${{ secrets.AWS_ECR_REPO }}:lastest|g" docker-compose-server.yml
+        ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.AWS_EC2_IP }} "chmod +w ~/ && ls ~/docker-compose.yml && rm -f ~/docker-compose.yml"
+        scp -o StrictHostKeyChecking=no docker-compose-server.yml ubuntu@${{ secrets.AWS_EC2_IP }}:~/docker-compose.yml
+        ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.AWS_EC2_IP }} "ls ~/docker-compose.yml && echo 'Archivo copiado exitosamente'"
+      
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: copy-docker-compose
+    steps:  
+      - name: Deploy with Docker Compose
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.AWS_EC2_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY_EC2 }}
+          port: 22
+          script: |
+            echo "Iniciando docker-compose"
+            cd ~/ && docker compose down && docker compose pull && docker compose up -d
+            echo "docker-compose iniciado"
+            echo "Desplegado correctamente"
+      - name: Notify Deployment
+        run: |
+          echo "Despliegue exitoso en el servidor EC2"
+      - name: Notify Failure 
+        if: failure()
+        run: |
+          echo "Despliegue fallido en el servidor EC2"
